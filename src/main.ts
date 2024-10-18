@@ -1,42 +1,92 @@
 import "./style.css";
 
 const my_canvas = document.getElementById("my_canvas") as HTMLCanvasElement;
+
+if (!my_canvas) {
+  throw new Error("No Canvas");
+}
+
 const ctx = my_canvas.getContext("2d");
 
-let colorValue = 0;
-const changeColorSpeed = 1;
+if (!my_canvas) {
+  throw new Error("No Context");
+}
 
 const width = my_canvas.width;
 const height = my_canvas.height;
 
-const rows = 20;
-const cols = 20;
+const imageData = ctx?.createImageData(width, height);
+const data = imageData?.data;
 
-const cellWidth = width / cols;
-const cellHeight = height / cols;
+const rows = height;
+const cols = width;
+const gridSize = width * height;
 
-const grid = Array.from({ length: rows }, () =>
-  Array.from({ length: cols }, () => (Math.random() > 0.5 ? 1 : 0))
-);
+let currentGrid = new Uint8Array(gridSize);
+let nextGrid = new Uint8Array(gridSize);
 
-const updateColor = () => {
-  colorValue = (colorValue + changeColorSpeed) % 360;
+for (let i = 0; i < gridSize; i++) {
+  currentGrid[i] = Math.random() > 0.5 ? 1 : 0;
+}
 
-  if (ctx) {
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        const xPos = col * cellWidth;
-        const yPos = row * cellHeight;
-        ctx.fillStyle = grid[row][col] ? "black" : "white";
-        ctx.fillRect(xPos, yPos, cellWidth, cellHeight);
+const processGrid = (grid: Uint8Array, newGrid: Uint8Array) => {
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const idx = row * cols + col;
+      let count = 0;
+
+      // Calculate neighbor indices
+
+      for (let i = -1; i <= 1; i++) {
+        const currentRow = row + i;
+        if (currentRow < 0 || currentRow >= rows) continue;
+        for (let j = -1; j <= 1; j++) {
+          const currentCol = col + j;
+          if (currentCol < 0 || currentCol >= cols) continue;
+          if (i === 0 && j === 0) continue;
+          const neighborIdx = currentRow * cols + currentCol;
+          count += grid[neighborIdx];
+        }
+      }
+
+      if (grid[idx] === 0 && count === 3) {
+        newGrid[idx] = 1;
+      } else if (grid[idx] === 1 && (count > 3 || count < 2)) {
+        newGrid[idx] = 0;
+      } else {
+        newGrid[idx] = grid[idx];
       }
     }
   }
-
-  requestAnimationFrame(updateColor);
 };
 
-updateColor();
+const updateCanvas = (grid: Uint8Array) => {
+  for (let i = 0; i < gridSize; i++) {
+    const color = grid[i] === 1 ? 0 : 255;
+    const pixelIndex = i * 4;
+    if (data) {
+      data[pixelIndex] = color;
+      data[pixelIndex + 1] = color;
+      data[pixelIndex + 2] = color;
+      data[pixelIndex + 3] = 255;
+    }
+  }
+  if (ctx && imageData) {
+    ctx.putImageData(imageData, 0, 0);
+  }
+};
+
+let count = 0;
+const update = () => {
+  count++;
+  processGrid(currentGrid, nextGrid);
+  updateCanvas(currentGrid);
+
+  [currentGrid, nextGrid] = [nextGrid, currentGrid];
+  requestAnimationFrame(update);
+};
+
+update();
 
 // Any live cell with fewer than two live neighbours dies, as if by underpopulation.
 // Any live cell with two or three live neighbours lives on to the next generation.
