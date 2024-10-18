@@ -50,10 +50,14 @@ const processGrid = (grid: Uint8Array, newGrid: Uint8Array) => {
       }
 
       if (grid[idx] === 0 && count === 3) {
+        // Any dead cell with exactly three live neighbours becomes a live cell
         newGrid[idx] = 1;
       } else if (grid[idx] === 1 && (count > 3 || count < 2)) {
+        // Any live cell with more than three live neighbours dies
+        // Any live cell with fewer than two live neighbours dies
         newGrid[idx] = 0;
       } else {
+        // Any live cell with two or three live neighbours lives on to the next generation.
         newGrid[idx] = grid[idx];
       }
     }
@@ -87,8 +91,3 @@ const update = () => {
 };
 
 update();
-
-// Any live cell with fewer than two live neighbours dies, as if by underpopulation.
-// Any live cell with two or three live neighbours lives on to the next generation.
-// Any live cell with more than three live neighbours dies, as if by overpopulation.
-// Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction.
